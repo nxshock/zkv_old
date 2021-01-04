@@ -7,10 +7,6 @@ import (
 	"io"
 )
 
-type Config struct {
-	BlockDataSize int64
-}
-
 type header struct {
 	version       int8
 	blockDataSize int64

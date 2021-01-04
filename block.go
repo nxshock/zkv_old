@@ -23,16 +23,20 @@ type Db struct {
 
 	currentBlockNum int64
 
-	blockDataSize int64
+	config Config
 
 	mu sync.Mutex
 }
 
-func Open(path string) (*Db, error) {
-	return open(path, os.O_CREATE|os.O_RDWR)
+func OpenWithConfig(path string, config *Config) (*Db, error) {
+	return open(path, os.O_CREATE|os.O_RDWR, config)
 }
 
-func open(path string, fileFlags int) (*Db, error) {
+func Open(path string) (*Db, error) {
+	return open(path, os.O_CREATE|os.O_RDWR, nil)
+}
+
+func open(path string, fileFlags int, config *Config) (*Db, error) {
 	newDb := false
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		newDb = true
@@ -49,9 +53,13 @@ func open(path string, fileFlags int) (*Db, error) {
 		blockInfo: make(map[int64]int64)}
 
 	if newDb {
-		db.blockDataSize = defaultBlockDataSize
+		if config != nil && config.BlockDataSize > 0 {
+			db.config.BlockDataSize = config.BlockDataSize
+		} else {
+			db.config.BlockDataSize = defaultConfig.BlockDataSize
+		}
 
-		err = writeHeader(db.f, db.blockDataSize)
+		err = writeHeader(db.f, db.config.BlockDataSize)
 		if err != nil {
 			db.f.Close()
 			return nil, err
@@ -66,7 +74,12 @@ func open(path string, fileFlags int) (*Db, error) {
 		return nil, err
 	}
 
-	db.blockDataSize = header.blockDataSize
+	db.config.BlockDataSize = header.blockDataSize
+
+	if config != nil && db.config.BlockDataSize != config.BlockDataSize {
+		f.Close()
+		return nil, fmt.Errorf("can't change block size to %d on existing database with block size %d", config.BlockDataSize, db.config.BlockDataSize)
+	}
 
 	err = db.readAllBlocks()
 	if err != nil {
@@ -160,7 +173,7 @@ func (db *Db) move() error {
 		return err
 	}
 
-	if int64(len(blockBytes)) >= db.blockDataSize {
+	if int64(len(blockBytes)) >= db.config.BlockDataSize {
 		return nil
 	}
 
@@ -191,7 +204,7 @@ func (db *Db) set(key int64, value interface{}) error {
 	}
 	db.keys[key] = c
 
-	if int64(db.buf.Len()) >= db.blockDataSize {
+	if int64(db.buf.Len()) >= db.config.BlockDataSize {
 		err = db.flush()
 		if err != nil {
 			return err
