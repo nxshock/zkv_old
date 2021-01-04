@@ -4,7 +4,10 @@ Simple key/value storage focused on high data compression.
 
 **Note: library is unstable, compatibility with older versions is not guaranteed.**
 
+Keys stored in memory, while values stored on disk.
+
 Data stored in log based structure. Records grouped into blocks to increase compression level.
+
 
 File structure:
 ```
