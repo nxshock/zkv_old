@@ -1,4 +1,4 @@
-package block
+package zkv
 
 var (
 	headerBytes                = []byte("zkv")
