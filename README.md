@@ -1,4 +1,4 @@
-# logkv
+# zkv
 
 Simple key/value storage focused on high data compression.
 
@@ -8,6 +8,12 @@ Keys stored in memory, while values stored on disk.
 
 Data stored in log based structure. Records grouped into blocks to increase compression level.
 
+Features:
+* High compression ratio.
+
+Disadvantages:
+* Slow value recovery from disk;
+* Deleting or replacing data does not recover free space.
 
 File structure:
 ```
