@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,7 +30,15 @@ type Db struct {
 }
 
 func OpenWithConfig(path string, config *Config) (*Db, error) {
-	return open(path, os.O_CREATE|os.O_RDWR, config)
+	var flag int
+
+	if config != nil && config.ReadOnly {
+		flag = os.O_RDONLY
+	} else {
+		flag = os.O_CREATE | os.O_RDWR
+	}
+
+	return open(path, flag, config)
 }
 
 func Open(path string) (*Db, error) {
@@ -40,6 +49,10 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 	newDb := false
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		newDb = true
+	}
+
+	if newDb && config != nil && config.ReadOnly {
+		return nil, errors.New("trying to create new readonly database")
 	}
 
 	f, err := os.OpenFile(path, fileFlags, 0644)
@@ -76,7 +89,11 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 
 	db.config.BlockDataSize = header.blockDataSize
 
-	if config != nil && db.config.BlockDataSize != config.BlockDataSize {
+	if config != nil && config.ReadOnly {
+		db.config.ReadOnly = config.ReadOnly
+	}
+
+	if config != nil && config.BlockDataSize > 0 && db.config.BlockDataSize != config.BlockDataSize {
 		f.Close()
 		return nil, fmt.Errorf("can't change block size to %d on existing database with block size %d", config.BlockDataSize, db.config.BlockDataSize)
 	}
@@ -189,6 +206,10 @@ func (db *Db) move() error {
 func (db *Db) Set(key int64, value interface{}) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
+
+	if db.config.ReadOnly {
+		return errReadOnly
+	}
 
 	return db.set(key, value)
 }
@@ -473,6 +494,10 @@ func (db *Db) Count() int {
 func (db *Db) Delete(key int64) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
+
+	if db.config.ReadOnly {
+		return errReadOnly
+	}
 
 	return db.delete(key)
 }
