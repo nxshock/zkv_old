@@ -16,6 +16,7 @@ type coords struct {
 	recordOffset int64
 }
 
+// Db represents key/value storage.
 type Db struct {
 	f         *os.File
 	buf       bytes.Buffer
@@ -29,6 +30,7 @@ type Db struct {
 	mu sync.Mutex
 }
 
+// OpenWithConfig opens storage with specified config options.
 func OpenWithConfig(path string, config *Config) (*Db, error) {
 	var flag int
 
@@ -41,6 +43,7 @@ func OpenWithConfig(path string, config *Config) (*Db, error) {
 	return open(path, flag, config)
 }
 
+// Open opens storage with default config options.
 func Open(path string) (*Db, error) {
 	return open(path, os.O_CREATE|os.O_RDWR, nil)
 }
@@ -203,6 +206,8 @@ func (db *Db) move() error {
 	return nil
 }
 
+// Set saves value for specified key.
+// value can be any type.
 func (db *Db) Set(key int64, value interface{}) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -235,6 +240,7 @@ func (db *Db) set(key int64, value interface{}) error {
 	return nil
 }
 
+// Get returns value of specified key.
 func (db *Db) Get(key int64, valuePtr interface{}) (exists bool, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -320,6 +326,7 @@ func (db *Db) flush() error {
 	return nil
 }
 
+// Close saves buffered data and closes storage.
 func (db *Db) Close() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -471,6 +478,8 @@ func readRecord(r io.Reader) (action action, key int64, valueGobBytes []byte, er
 	return actionNone, 0, nil, fmt.Errorf("unknown action %d", action)
 }
 
+// Keys returns all stored keys.
+// Key order is not guaranteed.
 func (db *Db) Keys() []int64 {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -484,6 +493,7 @@ func (db *Db) Keys() []int64 {
 	return keys
 }
 
+// Count returns number of stored key/value pairs.
 func (db *Db) Count() int {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -491,6 +501,7 @@ func (db *Db) Count() int {
 	return len(db.keys)
 }
 
+// Delete deletes value of specified key.
 func (db *Db) Delete(key int64) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
