@@ -5,5 +5,5 @@ import (
 )
 
 var (
-	errReadOnly = errors.New("database is read only")
+	errReadOnly = errors.New("storage is read only")
 )

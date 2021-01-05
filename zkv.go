@@ -54,7 +54,7 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 	}
 
 	if newDb && config != nil && config.ReadOnly {
-		return nil, errors.New("trying to create new readonly database")
+		return nil, errors.New("trying to create new readonly storage")
 	}
 
 	f, err := os.OpenFile(path, fileFlags, 0644)
@@ -97,7 +97,7 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 
 	if config != nil && config.BlockDataSize > 0 && db.config.BlockDataSize != config.BlockDataSize {
 		f.Close()
-		return nil, fmt.Errorf("can't change block size to %d on existing database with block size %d", config.BlockDataSize, db.config.BlockDataSize)
+		return nil, fmt.Errorf("can't change block size to %d on existing storage with block size %d", config.BlockDataSize, db.config.BlockDataSize)
 	}
 
 	err = db.readAllBlocks()
