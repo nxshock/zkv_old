@@ -17,10 +17,13 @@ func TestReadWriteRecord(t *testing.T) {
 		value  int64
 	}{actionAdd, 123, 456}
 
-	err := writeRecord(&buf, record.action, record.key, record.value)
+	keyBytes, err := encodeKey(record.key)
 	assert.NoError(t, err)
 
-	action, key, b, err := readRecord(&buf)
+	err = writeRecord(&buf, record.action, keyBytes, record.value)
+	assert.NoError(t, err)
+
+	action, keyBytes, b, err := readRecord(&buf)
 	assert.NoError(t, err)
 
 	var gotValue int64
@@ -28,6 +31,11 @@ func TestReadWriteRecord(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, record.action, action)
+
+	var key int64
+	err = decodeKey(keyBytes, &key)
+	assert.NoError(t, err)
+
 	assert.Equal(t, record.key, key)
 	assert.Equal(t, record.value, gotValue)
 }
@@ -38,7 +46,11 @@ func TestReadWriteBlock(t *testing.T) {
 
 	for i := int64(0); i < 100; i++ {
 		recordBuf.Reset()
-		err := writeRecord(&recordBuf, actionAdd, i, i)
+
+		keyBytes, err := encodeKey(i)
+		assert.NoError(t, err)
+
+		err = writeRecord(&recordBuf, actionAdd, keyBytes, i)
 		assert.NoError(t, err)
 	}
 

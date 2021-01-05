@@ -29,7 +29,44 @@ block data size      [8]byte // minimal block size for compression
 
 	[]record
 		action       [1]byte
+		key length   [8]byte
 		key          [8]byte
 		value length [8]byte
 		value        []byte
+```
+
+## Usage
+
+Open or create new storage:
+
+```go
+import "github.com/nxshock/zkv"
+
+db, err := Open("path_to_file.zkv")
+defer db.Close() // don't forget to close storage
+```
+
+Write data:
+
+```go
+err := db.Set(key, value) // key and value can be any type
+```
+
+Read data:
+
+```go
+var value ValueType
+err := db.Get(key, &value)
+```
+
+Delete data:
+
+```go
+err := db.Delete(key) // returns nil error if key does not exists
+```
+
+Get number of stored records:
+
+```go
+count := db.Count()
 ```

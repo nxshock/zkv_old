@@ -19,8 +19,8 @@ type coords struct {
 type Db struct {
 	f         *os.File
 	buf       bytes.Buffer
-	keys      map[int64]coords // ключ - координаты
-	blockInfo map[int64]int64  // номер блока - смещение в файле
+	keys      map[string]coords // [key]block number + record offset
+	blockInfo map[int64]int64   // [block number]file offset
 
 	currentBlockNum int64
 
@@ -64,7 +64,7 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 
 	db := &Db{
 		f:         f,
-		keys:      make(map[int64]coords),
+		keys:      make(map[string]coords),
 		blockInfo: make(map[int64]int64)}
 
 	if newDb {
@@ -143,7 +143,7 @@ func (db *Db) readAllBlocks() error {
 				return err
 			}
 
-			action, key, _, err := readRecord(blockDataReader)
+			action, keyBytes, _, err := readRecord(blockDataReader)
 			if err == io.EOF {
 				break
 			} else if err != nil {
@@ -152,17 +152,17 @@ func (db *Db) readAllBlocks() error {
 
 			switch action {
 			case actionAdd:
-				if _, exists := db.keys[key]; exists {
-					return fmt.Errorf("unexpected add of key %d because it is already exists", key)
+				if _, exists := db.keys[string(keyBytes)]; exists {
+					return fmt.Errorf("unexpected add of key %v because it is already exists", keyBytes)
 				}
-				db.keys[key] = coords{blockNum: db.currentBlockNum, recordOffset: recordOffset}
+				db.keys[string(keyBytes)] = coords{blockNum: db.currentBlockNum, recordOffset: recordOffset}
 			case actionDelete:
-				if _, exists := db.keys[key]; !exists {
-					return fmt.Errorf("unexpected delete of key %d because it is does not exists", key)
+				if _, exists := db.keys[string(keyBytes)]; !exists {
+					return fmt.Errorf("unexpected delete of key %v because it is does not exists", keyBytes)
 				}
-				delete(db.keys, key)
+				delete(db.keys, string(keyBytes))
 			default:
-				return fmt.Errorf("unknown action: %d for key %d", action, key)
+				return fmt.Errorf("unknown action: %d for key %v", action, keyBytes)
 			}
 		}
 
@@ -218,10 +218,15 @@ func (db *Db) Set(key int64, value interface{}) error {
 	return db.set(key, value)
 }
 
-func (db *Db) set(key int64, value interface{}) error {
+func (db *Db) set(key interface{}, value interface{}) error {
+	keyBytes, err := encodeKey(key)
+	if err != nil {
+		return err
+	}
+
 	// delete key if it already exists
-	if _, exists := db.keys[key]; exists {
-		err := writeRecord(&db.buf, actionDelete, key, nil)
+	if _, exists := db.keys[string(keyBytes)]; exists {
+		err := writeRecord(&db.buf, actionDelete, keyBytes, nil)
 		if err != nil {
 			return err
 		}
@@ -231,11 +236,11 @@ func (db *Db) set(key int64, value interface{}) error {
 		blockNum:     db.currentBlockNum,
 		recordOffset: int64(db.buf.Len())}
 
-	err := writeRecord(&db.buf, actionAdd, key, value)
+	err = writeRecord(&db.buf, actionAdd, keyBytes, value)
 	if err != nil {
 		return err
 	}
-	db.keys[key] = c
+	db.keys[string(keyBytes)] = c
 
 	if int64(db.buf.Len()) >= db.config.BlockDataSize {
 		err = db.flush()
@@ -248,15 +253,20 @@ func (db *Db) set(key int64, value interface{}) error {
 }
 
 // Get returns value of specified key.
-func (db *Db) Get(key int64, valuePtr interface{}) (exists bool, err error) {
+func (db *Db) Get(key interface{}, valuePtr interface{}) (exists bool, err error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	return db.get(key, valuePtr)
 }
 
-func (db *Db) get(key int64, valuePtr interface{}) (exists bool, err error) {
-	coords, exists := db.keys[key]
+func (db *Db) get(key interface{}, valuePtr interface{}) (exists bool, err error) {
+	keyBytes, err := encodeKey(key)
+	if err != nil {
+		return false, err
+	}
+
+	coords, exists := db.keys[string(keyBytes)]
 	if !exists {
 		return false, nil
 	}
@@ -294,13 +304,13 @@ func (db *Db) get(key int64, valuePtr interface{}) (exists bool, err error) {
 	blockBytesReader := bytes.NewReader(blockBytes)
 	blockBytesReader.Seek(coords.recordOffset, io.SeekStart)
 
-	_, gotKey, valueBytes, err := readRecord(blockBytesReader)
+	_, gotKeyBytes, valueBytes, err := readRecord(blockBytesReader)
 	if err != nil {
 		return true, err
 	}
 
-	if gotKey != key {
-		return true, fmt.Errorf("expected read %d key, got %d", key, gotKey)
+	if !bytes.Equal(gotKeyBytes, keyBytes) {
+		return true, fmt.Errorf("expected read %v key, got %v", keyBytes, gotKeyBytes)
 	}
 
 	err = gob.NewDecoder(bytes.NewReader(valueBytes)).Decode(valuePtr)
@@ -350,7 +360,8 @@ func (db *Db) Close() error {
 
 // Keys returns all stored keys.
 // Key order is not guaranteed.
-func (db *Db) Keys() []int64 {
+// TODO: return
+/*func (db *Db) Keys() []int64 {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -361,7 +372,7 @@ func (db *Db) Keys() []int64 {
 	}
 
 	return keys
-}
+}*/
 
 // Count returns number of stored key/value pairs.
 func (db *Db) Count() int {
@@ -384,16 +395,21 @@ func (db *Db) Delete(key int64) error {
 }
 
 func (db *Db) delete(key int64) error {
-	if _, exists := db.keys[key]; !exists {
-		return nil
-	}
-
-	err := writeRecord(&db.buf, actionDelete, key, nil)
+	keyBytes, err := encodeKey(key)
 	if err != nil {
 		return err
 	}
 
-	delete(db.keys, key)
+	if _, exists := db.keys[string(keyBytes)]; !exists {
+		return nil
+	}
+
+	err = writeRecord(&db.buf, actionDelete, keyBytes, nil)
+	if err != nil {
+		return err
+	}
+
+	delete(db.keys, string(keyBytes))
 
 	return nil
 }
