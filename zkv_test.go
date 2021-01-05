@@ -212,3 +212,29 @@ func TestDelete(t *testing.T) {
 	err = db.Close()
 	assert.NoError(t, err)
 }
+
+func TestKeyReplacing(t *testing.T) {
+	const filePath = "file.zkv"
+
+	defer os.Remove(filePath)
+
+	db, err := Open(filePath)
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+
+	err = db.Set(1, 1)
+	assert.NoError(t, err)
+
+	err = db.Set(1, 1)
+	assert.NoError(t, err)
+
+	err = db.Close()
+	assert.NoError(t, err)
+
+	db, err = Open(filePath)
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+
+	err = db.Close()
+	assert.NoError(t, err)
+}

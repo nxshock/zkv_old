@@ -219,6 +219,14 @@ func (db *Db) Set(key int64, value interface{}) error {
 }
 
 func (db *Db) set(key int64, value interface{}) error {
+	// delete key if it already exists
+	if _, exists := db.keys[key]; exists {
+		err := writeRecord(&db.buf, actionDelete, key, nil)
+		if err != nil {
+			return err
+		}
+	}
+
 	c := coords{
 		blockNum:     db.currentBlockNum,
 		recordOffset: int64(db.buf.Len())}
