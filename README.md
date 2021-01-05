@@ -9,11 +9,13 @@ Keys stored in memory, while values stored on disk.
 Data stored in log based structure. Records grouped into blocks to increase compression level.
 
 Features:
-* High compression ratio.
+* High compression ratio;
+* Fast writes.
 
 Disadvantages:
-* Slow value recovery from disk;
+* Slow reads;
 * Deleting or replacing data does not recover free space.
+* Every request blocks whole storage.
 
 File structure:
 ```
