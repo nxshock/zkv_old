@@ -235,17 +235,17 @@ func TestKeyReplacing(t *testing.T) {
 }
 
 func TestShrink(t *testing.T) {
-	const filePath = "file.zkv"
-	const newFilePath = "file2.zkv"
+	const filePath = "shrink1.zkv"
+	const newFilePath = "shrink2.zkv"
 
-	defer os.Remove(filePath)
-	defer os.Remove(newFilePath)
+	//defer os.Remove(filePath)
+	//defer os.Remove(newFilePath)
 
 	db, err := Open(filePath)
 	assert.NoError(t, err)
 
-	for i := 0; i < 1000; i++ {
-		err = db.Set(i, i)
+	for i := 0; i < 10000; i++ {
+		err = db.Set(i/10, i)
 		assert.NoError(t, err)
 	}
 

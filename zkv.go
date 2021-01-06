@@ -367,7 +367,7 @@ func (db *Db) Shrink(filePath string) error {
 		return fmt.Errorf("file %s must not exists", filePath)
 	}
 
-	shrinkedDb, err := OpenWithConfig(filePath, &db.config)
+	shrinkedDb, err := OpenWithConfig(filePath, &Config{BlockDataSize: db.config.BlockDataSize})
 	if err != nil {
 		shrinkedDb.Close()
 		os.Remove(filePath)
