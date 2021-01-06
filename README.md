@@ -94,3 +94,7 @@ count := db.Count()
 ```go
 err := db.Shrink(newFilePath)
 ```
+
+## Used libraries
+
+* [zstd](https://github.com/klauspost/compress/tree/master/zstd) - provides compression to and decompression of Zstandard content.
