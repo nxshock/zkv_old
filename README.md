@@ -70,3 +70,9 @@ Get number of stored records:
 ```go
 count := db.Count()
 ```
+
+Shrink storage size by deleting overwrited records from file:
+
+```go
+err := db.Shrink(newFilePath)
+```
