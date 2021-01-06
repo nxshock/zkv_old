@@ -152,9 +152,6 @@ func (db *Db) readAllBlocks() error {
 
 			switch action {
 			case actionAdd:
-				if _, exists := db.keys[string(keyBytes)]; exists {
-					return fmt.Errorf("unexpected add of key %v because it is already exists", keyBytes)
-				}
 				db.keys[string(keyBytes)] = coords{blockNum: db.currentBlockNum, recordOffset: recordOffset}
 			case actionDelete:
 				if _, exists := db.keys[string(keyBytes)]; !exists {
@@ -222,14 +219,6 @@ func (db *Db) set(key interface{}, value interface{}) error {
 	keyBytes, err := encodeKey(key)
 	if err != nil {
 		return err
-	}
-
-	// delete key if it already exists
-	if _, exists := db.keys[string(keyBytes)]; exists {
-		err := writeRecord(&db.buf, actionDelete, keyBytes, nil)
-		if err != nil {
-			return err
-		}
 	}
 
 	c := coords{
