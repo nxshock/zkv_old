@@ -34,7 +34,7 @@ func TestCustomBlockSize(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestReadOnlyBLocking(t *testing.T) {
+func TestReadOnlyBlocking(t *testing.T) {
 	const filePath = "file.tmp"
 	defer os.Remove(filePath)
 
