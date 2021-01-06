@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-func encodeKey(key interface{}) ([]byte, error) {
+func encode(key interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(key)
 	if err != nil {
@@ -67,7 +67,7 @@ func writeRecord(w io.Writer, action action, keyBytes []byte, valuePtr interface
 		return writeRecord2(w, action, keyBytes, nil)
 	}
 
-	valueBytes, err := encodeKey(valuePtr)
+	valueBytes, err := encode(valuePtr)
 	if err != nil {
 		return err
 	}

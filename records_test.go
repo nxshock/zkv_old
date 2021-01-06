@@ -8,7 +8,7 @@ import (
 
 func TestKeyOperations(t *testing.T) {
 	key := int64(123)
-	bytes, err := encodeKey(key)
+	bytes, err := encode(key)
 	assert.NoError(t, err)
 
 	var gotKey int64

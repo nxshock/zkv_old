@@ -216,12 +216,12 @@ func (db *Db) Set(key interface{}, value interface{}) error {
 }
 
 func (db *Db) set(key interface{}, value interface{}) error {
-	keyBytes, err := encodeKey(key)
+	keyBytes, err := encode(key)
 	if err != nil {
 		return err
 	}
 
-	valueBytes, err := encodeKey(value)
+	valueBytes, err := encode(value)
 	if err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func (db *Db) Get(key interface{}, valuePtr interface{}) error {
 }
 
 func (db *Db) get(key interface{}, valuePtr interface{}) error {
-	keyBytes, err := encodeKey(key)
+	keyBytes, err := encode(key)
 	if err != nil {
 		return err
 	}
@@ -330,7 +330,7 @@ func (db *Db) Delete(key int64) error {
 }
 
 func (db *Db) delete(key int64) error {
-	keyBytes, err := encodeKey(key)
+	keyBytes, err := encode(key)
 	if err != nil {
 		return err
 	}

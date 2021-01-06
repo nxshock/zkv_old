@@ -17,7 +17,7 @@ func TestReadWriteRecord(t *testing.T) {
 		value  int64
 	}{actionAdd, 123, 456}
 
-	keyBytes, err := encodeKey(record.key)
+	keyBytes, err := encode(record.key)
 	assert.NoError(t, err)
 
 	err = writeRecord(&buf, record.action, keyBytes, record.value)
@@ -47,7 +47,7 @@ func TestReadWriteBlock(t *testing.T) {
 	for i := int64(0); i < 100; i++ {
 		recordBuf.Reset()
 
-		keyBytes, err := encodeKey(i)
+		keyBytes, err := encode(i)
 		assert.NoError(t, err)
 
 		err = writeRecord(&recordBuf, actionAdd, keyBytes, i)
