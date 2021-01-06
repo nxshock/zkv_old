@@ -96,9 +96,8 @@ func TestReadFile(t *testing.T) {
 	for i := int64(0); i < expectedRecordCount; i++ {
 		var got int64
 
-		exists, err := db.Get(i, &got)
+		err = db.Get(i, &got)
 		assert.NoError(t, err)
-		assert.True(t, exists)
 		assert.EqualValues(t, i, got)
 	}
 
@@ -120,9 +119,8 @@ func TestReadFile(t *testing.T) {
 	for i := int64(0); i < expectedRecordCount; i++ {
 		var got int64
 
-		exists, err := db.Get(i, &got)
+		err = db.Get(i, &got)
 		assert.NoError(t, err)
-		assert.True(t, exists)
 		assert.EqualValues(t, i, got)
 	}
 
@@ -145,9 +143,8 @@ func TestOneWriteRead(t *testing.T) {
 	//assert.Equal(t, []int64{1}, db.Keys())
 
 	var got int64
-	exists, err := db.Get(1, &got)
+	err = db.Get(1, &got)
 	assert.NoError(t, err)
-	assert.True(t, exists)
 
 	// -------------------------------------------------------------------------
 
@@ -157,9 +154,8 @@ func TestOneWriteRead(t *testing.T) {
 
 	//assert.Equal(t, []int64{1}, db.Keys())
 	got = 0
-	exists, err = db.Get(1, &got)
+	err = db.Get(1, &got)
 	assert.NoError(t, err)
-	assert.True(t, exists)
 
 	err = db.Close()
 	assert.NoError(t, err)
@@ -172,9 +168,8 @@ func TestOneWriteRead(t *testing.T) {
 
 	//assert.Equal(t, []int64{1}, db.Keys())
 	got = 0
-	exists, err = db.Get(1, &got)
+	err = db.Get(1, &got)
 	assert.NoError(t, err)
-	assert.True(t, exists)
 
 	assert.EqualValues(t, 1, got)
 
@@ -197,7 +192,6 @@ func TestDelete(t *testing.T) {
 	err = db.Delete(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, db.Count())
-	//assert.Empty(t, db.Keys())
 
 	err = db.Close()
 	assert.NoError(t, err)
@@ -206,11 +200,9 @@ func TestDelete(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
 	assert.Equal(t, 0, db.Count())
-	//assert.Empty(t, db.Keys())
 
-	exists, err := db.Get(1, nil)
-	assert.NoError(t, err)
-	assert.False(t, exists)
+	err = db.Get(1, nil)
+	assert.Equal(t, errNotFound, err)
 
 	err = db.Close()
 	assert.NoError(t, err)
@@ -240,4 +232,39 @@ func TestKeyReplacing(t *testing.T) {
 
 	err = db.Close()
 	assert.NoError(t, err)
+}
+
+func TestShrink(t *testing.T) {
+	const filePath = "file.zkv"
+	const newFilePath = "file2.zkv"
+
+	defer os.Remove(filePath)
+	defer os.Remove(newFilePath)
+
+	db, err := Open(filePath)
+	assert.NoError(t, err)
+
+	for i := 0; i < 1000; i++ {
+		err = db.Set(i, i)
+		assert.NoError(t, err)
+	}
+
+	err = db.Close()
+	assert.NoError(t, err)
+
+	db, err = Open(filePath)
+	assert.NoError(t, err)
+
+	err = db.Shrink(newFilePath)
+	assert.NoError(t, err)
+
+	err = db.Close()
+	assert.NoError(t, err)
+
+	file1stat, err := os.Stat(filePath)
+	assert.NoError(t, err)
+	file2stat, err := os.Stat(newFilePath)
+	assert.NoError(t, err)
+
+	assert.True(t, file1stat.Size() > file2stat.Size())
 }

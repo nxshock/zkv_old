@@ -203,8 +203,8 @@ func (db *Db) move() error {
 }
 
 // Set saves value for specified key.
-// value can be any type.
-func (db *Db) Set(key int64, value interface{}) error {
+// key and value can be any type.
+func (db *Db) Set(key interface{}, value interface{}) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -221,93 +221,47 @@ func (db *Db) set(key interface{}, value interface{}) error {
 		return err
 	}
 
-	c := coords{
-		blockNum:     db.currentBlockNum,
-		recordOffset: int64(db.buf.Len())}
-
-	err = writeRecord(&db.buf, actionAdd, keyBytes, value)
+	valueBytes, err := encodeKey(value)
 	if err != nil {
 		return err
 	}
-	db.keys[string(keyBytes)] = c
 
-	if int64(db.buf.Len()) >= db.config.BlockDataSize {
-		err = db.flush()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return db.writeRecord(actionAdd, keyBytes, valueBytes)
 }
 
 // Get returns value of specified key.
-func (db *Db) Get(key interface{}, valuePtr interface{}) (exists bool, err error) {
+func (db *Db) Get(key interface{}, valuePtr interface{}) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	return db.get(key, valuePtr)
 }
 
-func (db *Db) get(key interface{}, valuePtr interface{}) (exists bool, err error) {
+func (db *Db) get(key interface{}, valuePtr interface{}) error {
 	keyBytes, err := encodeKey(key)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	coords, exists := db.keys[string(keyBytes)]
-	if !exists {
-		return false, nil
-	}
-
-	if coords.blockNum == db.currentBlockNum {
-		r := bytes.NewReader(db.buf.Bytes())
-		_, err := r.Seek(coords.recordOffset, io.SeekStart)
-		if err != nil {
-			return true, err
-		}
-
-		_, _, recordBytes, err := readRecord(r)
-		if err != nil {
-			return true, err
-		}
-
-		err = gob.NewDecoder(bytes.NewReader(recordBytes)).Decode(valuePtr)
-		if err != nil {
-			return true, err
-		}
-
-		return true, nil
-	}
-
-	_, err = db.f.Seek(db.blockInfo[coords.blockNum], io.SeekStart)
+	action, gotKeyBytes, valueBytes, err := db.getRecord(keyBytes)
 	if err != nil {
-		return true, err
+		return err
 	}
 
-	blockBytes, err := readBlock(db.f)
-	if err != nil {
-		return true, err
-	}
-
-	blockBytesReader := bytes.NewReader(blockBytes)
-	blockBytesReader.Seek(coords.recordOffset, io.SeekStart)
-
-	_, gotKeyBytes, valueBytes, err := readRecord(blockBytesReader)
-	if err != nil {
-		return true, err
+	if action != actionAdd {
+		return fmt.Errorf("expected %v action, got %v", actionAdd, action)
 	}
 
 	if !bytes.Equal(gotKeyBytes, keyBytes) {
-		return true, fmt.Errorf("expected read %v key, got %v", keyBytes, gotKeyBytes)
+		return fmt.Errorf("expected read %v key, got %v", keyBytes, gotKeyBytes)
 	}
 
 	err = gob.NewDecoder(bytes.NewReader(valueBytes)).Decode(valuePtr)
 	if err != nil {
-		return true, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
 func (db *Db) flush() error {
@@ -401,4 +355,74 @@ func (db *Db) delete(key int64) error {
 	delete(db.keys, string(keyBytes))
 
 	return nil
+}
+
+// Shrink compacts storage by removing replaced records and saves new file to
+// specified path.
+func (db *Db) Shrink(filePath string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	fileExists := func(filename string) bool {
+		info, err := os.Stat(filename)
+		if os.IsNotExist(err) {
+			return false
+		}
+		return !info.IsDir()
+	}
+
+	if fileExists(filePath) {
+		return fmt.Errorf("file %s must not exists", filePath)
+	}
+
+	shrinkedDb, err := OpenWithConfig(filePath, &db.config)
+	if err != nil {
+		shrinkedDb.Close()
+		os.Remove(filePath)
+		return err
+	}
+
+	var keysBytes [][]byte
+	for keyBytes := range db.keys {
+		keysBytes = append(keysBytes, []byte(keyBytes))
+	}
+
+	for _, keysBytes := range keysBytes {
+		action, gotKeyBytes, valueBytes, err := db.getRecord([]byte(keysBytes))
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(gotKeyBytes, []byte(keysBytes)) {
+			return fmt.Errorf("expected %v key bytes, got %v", keysBytes, gotKeyBytes)
+		}
+		if action != actionAdd {
+			return fmt.Errorf("expected %v action, got %v", actionAdd, action)
+		}
+
+		shrinkedDb.writeRecord(action, keysBytes, valueBytes)
+	}
+
+	return shrinkedDb.Close()
+}
+
+func (db *Db) writeRecord(action action, keyBytes []byte, valueBytes []byte) error {
+	c := coords{
+		blockNum:     db.currentBlockNum,
+		recordOffset: int64(db.buf.Len())}
+
+	err := writeRecord2(&db.buf, actionAdd, keyBytes, valueBytes)
+	if err != nil {
+		return err
+	}
+	db.keys[string(keyBytes)] = c
+
+	if int64(db.buf.Len()) >= db.config.BlockDataSize {
+		err = db.flush()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
