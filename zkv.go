@@ -301,22 +301,6 @@ func (db *Db) Close() error {
 	return db.f.Close()
 }
 
-// Keys returns all stored keys.
-// Key order is not guaranteed.
-// TODO: return
-/*func (db *Db) Keys() []int64 {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	var keys []int64
-
-	for key := range db.keys {
-		keys = append(keys, key)
-	}
-
-	return keys
-}*/
-
 // Count returns number of stored key/value pairs.
 func (db *Db) Count() int {
 	db.mu.Lock()
@@ -425,4 +409,39 @@ func (db *Db) writeRecord(action action, keyBytes []byte, valueBytes []byte) err
 
 	return nil
 
+}
+
+func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, valueBytes []byte, err error) {
+	coords, exists := db.keys[string(keyBytes)]
+	if !exists {
+		return actionNone, nil, nil, errNotFound
+	}
+
+	if coords.blockNum == db.currentBlockNum {
+		r := bytes.NewReader(db.buf.Bytes())
+		_, err := r.Seek(coords.recordOffset, io.SeekStart)
+		if err != nil {
+			return actionNone, nil, nil, err
+		}
+
+		return readRecord(r)
+	}
+
+	_, err = db.f.Seek(db.blockInfo[coords.blockNum], io.SeekStart)
+	if err != nil {
+		return actionNone, nil, nil, err
+	}
+
+	blockBytes, err := readBlock(db.f)
+	if err != nil {
+		return actionNone, nil, nil, err
+	}
+
+	blockBytesReader := bytes.NewReader(blockBytes)
+	_, err = blockBytesReader.Seek(coords.recordOffset, io.SeekStart)
+	if err != nil {
+		return actionNone, nil, nil, err
+	}
+
+	return readRecord(blockBytesReader)
 }
