@@ -37,7 +37,7 @@ block data size      [8]byte // minimal block size for compression
 
 ## Usage
 
-Open or create new storage:
+**Open or create new storage:**
 
 ```go
 import "github.com/nxshock/zkv"
@@ -46,32 +46,50 @@ db, err := Open("path_to_file.zkv")
 defer db.Close() // don't forget to close storage
 ```
 
-Write data:
+**Open storage with custom config:**
+
+```go
+config := &zkv.Config{
+	BlockDataSize: 4 * 1024 * 1024, // set custom block size
+	ReadOnly: true}                 // set true if storage must be read only
+
+db, err := OpenWithConfig("path_to_file.zkv", config)
+```
+
+**Write data:**
 
 ```go
 err := db.Set(key, value) // key and value can be any type
 ```
 
-Read data:
+**Read data:**
 
 ```go
 var value ValueType
 err := db.Get(key, &value)
 ```
 
-Delete data:
+**Delete data:**
 
 ```go
 err := db.Delete(key) // returns nil error if key does not exists
 ```
 
-Get number of stored records:
+**Flush data on disk (for example to prevent loosing buffered data):**
+
+```go
+err := db.Flush()
+```
+
+Often calls reduce compression ratio because written data on disk does not grouped into blocks. It you want to update data on disk on every record write, open storage with Config.BlockDataSize = 1.
+
+**Get number of stored records:**
 
 ```go
 count := db.Count()
 ```
 
-Shrink storage size by deleting overwrited records from file:
+**Shrink storage size by deleting overwrited records from file:**
 
 ```go
 err := db.Shrink(newFilePath)

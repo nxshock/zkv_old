@@ -264,6 +264,14 @@ func (db *Db) get(key interface{}, valuePtr interface{}) error {
 	return nil
 }
 
+// Flush saves buffered data on disk.
+func (db *Db) Flush() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	return db.flush()
+}
+
 func (db *Db) flush() error {
 	if db.buf.Len() == 0 {
 		return nil
