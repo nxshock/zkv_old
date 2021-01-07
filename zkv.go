@@ -22,6 +22,11 @@ type Db struct {
 	keys      map[string]coords // [key]block number + record offset
 	blockInfo map[int64]int64   // [block number]file offset
 
+	lastLoadedBlock struct {
+		blockNum  int64
+		blockData []byte
+	}
+
 	currentBlockNum int64
 
 	config Config
@@ -66,6 +71,7 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 		f:         f,
 		keys:      make(map[string]coords),
 		blockInfo: make(map[int64]int64)}
+	db.lastLoadedBlock.blockNum = -1
 
 	if newDb {
 		if config != nil && config.BlockDataSize > 0 {
@@ -441,8 +447,13 @@ func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, value
 		return actionNone, nil, nil, errNotFound
 	}
 
-	if coords.blockNum == db.currentBlockNum {
+	switch {
+	// load from write buffer
+	case coords.blockNum == db.currentBlockNum:
 		return readRecord(bytes.NewReader(db.buf.Bytes()[coords.recordOffset:]))
+	// load from last decoded block
+	case coords.blockNum == db.lastLoadedBlock.blockNum:
+		return readRecord(bytes.NewReader(db.lastLoadedBlock.blockData[coords.recordOffset:]))
 	}
 
 	_, err = db.f.Seek(db.blockInfo[coords.blockNum], io.SeekStart)
@@ -454,6 +465,9 @@ func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, value
 	if err != nil {
 		return actionNone, nil, nil, err
 	}
+
+	db.lastLoadedBlock.blockNum = coords.blockNum
+	db.lastLoadedBlock.blockData = blockBytes
 
 	blockBytesReader := bytes.NewReader(blockBytes)
 	_, err = blockBytesReader.Seek(coords.recordOffset, io.SeekStart)
