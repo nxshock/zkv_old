@@ -447,27 +447,10 @@ func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, value
 		return actionNone, nil, nil, errNotFound
 	}
 
-	switch {
-	// load from write buffer
-	case coords.blockNum == db.currentBlockNum:
-		return readRecord(bytes.NewReader(db.buf.Bytes()[coords.recordOffset:]))
-	// load from last decoded block
-	case coords.blockNum == db.lastLoadedBlock.blockNum:
-		return readRecord(bytes.NewReader(db.lastLoadedBlock.blockData[coords.recordOffset:]))
-	}
-
-	_, err = db.f.Seek(db.blockInfo[coords.blockNum], io.SeekStart)
+	blockBytes, err := db.getBlockBytes(coords.blockNum)
 	if err != nil {
 		return actionNone, nil, nil, err
 	}
-
-	blockBytes, err := readBlock(db.f, db.config.Compressor)
-	if err != nil {
-		return actionNone, nil, nil, err
-	}
-
-	db.lastLoadedBlock.blockNum = coords.blockNum
-	db.lastLoadedBlock.blockData = blockBytes
 
 	blockBytesReader := bytes.NewReader(blockBytes)
 	_, err = blockBytesReader.Seek(coords.recordOffset, io.SeekStart)
@@ -476,4 +459,36 @@ func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, value
 	}
 
 	return readRecord(blockBytesReader)
+}
+
+func (db *Db) getBlockBytes(blockNum int64) ([]byte, error) {
+	// load from write buffer
+	if blockNum == db.currentBlockNum {
+		return db.buf.Bytes(), nil
+	}
+
+	// load from last decoded block
+	if blockNum == db.lastLoadedBlock.blockNum {
+		return db.lastLoadedBlock.blockData, nil
+	}
+
+	offset, exists := db.blockInfo[blockNum]
+	if !exists {
+		return nil, fmt.Errorf("block #%d does not exits", blockNum)
+	}
+
+	_, err := db.f.Seek(offset, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := readBlock(db.f, db.config.Compressor)
+	if err != nil {
+		return nil, err
+	}
+
+	db.lastLoadedBlock.blockNum = blockNum
+	db.lastLoadedBlock.blockData = b
+
+	return b, nil
 }
