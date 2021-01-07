@@ -54,10 +54,10 @@ func TestReadWriteBlock(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	err := writeBlock(&buf, recordBuf.Bytes())
+	err := writeBlock(&buf, XzCompressor, recordBuf.Bytes())
 	assert.NoError(t, err)
 
-	b, err := readBlock(&buf)
+	b, err := readBlock(&buf, XzCompressor)
 	assert.NoError(t, err)
 
 	assert.Equal(t, recordBuf.Bytes(), b)

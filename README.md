@@ -21,6 +21,7 @@ File structure:
 ```
 header               [3]byte
 version              [1]byte
+compressor id        [1]byte
 block data size      [8]byte // minimal block size for compression
 
 []blocks
@@ -50,11 +51,21 @@ defer db.Close() // don't forget to close storage
 
 ```go
 config := &zkv.Config{
-	BlockDataSize: 4 * 1024 * 1024, // set custom block size
-	ReadOnly: true}                 // set true if storage must be read only
+	BlockDataSize: 4 * 1024 * 1024,  // set custom block size
+
+	Compressor:    zkv.XzCompressor, // choose from [NoneCompressor, XzCompressor, ZstdCompressor]
+	                                 // or create custom compressor that match zkv.Compressor interface
+
+	ReadOnly:      true}             // set true if storage must be read only
 
 db, err := OpenWithConfig("path_to_file.zkv", config)
 ```
+
+**List of available compressors:**
+
+1. `zkv.XzCompressor` (default) - high compression ratio, slow speed;
+2. `zkv.ZstdCompressor` - medium compression ratio, fast compression and medium speed decompression;
+3. `zkv.NoneCompressor` - no compression, high speed.
 
 **Write data:**
 
@@ -97,4 +108,5 @@ err := db.Shrink(newFilePath)
 
 ## Used libraries
 
+* [xz](https://github.com/ulikunitz/xz) - Go language package supports the reading and writing of xz compressed streams;
 * [zstd](https://github.com/klauspost/compress/tree/master/zstd) - provides compression to and decompression of Zstandard content.

@@ -1,53 +1,29 @@
 package zkv
 
-import (
-	"bytes"
-
-	"github.com/klauspost/compress/zstd"
+var (
+	availableCompressors map[int8]Compressor
+	defaultCompressor    = XzCompressor
 )
 
-var encoder *zstd.Encoder
-var buf bytes.Buffer
-
 func init() {
-	var err error
+	availableCompressors = make(map[int8]Compressor)
 
-	encoder, err = zstd.NewWriter(nil)
-	if err != nil {
-		panic(err)
+	availableCompressors[NoneCompressor.Id()] = NoneCompressor
+	availableCompressors[XzCompressor.Id()] = XzCompressor
+	availableCompressors[ZstdCompressor.Id()] = ZstdCompressor
+
+	for _, compressor := range availableCompressors {
+		err := compressor.Init()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
-func compress(b []byte) ([]byte, error) {
-	defer buf.Reset()
-
-	encoder.Reset(&buf)
-
-	_, err := encoder.Write(b)
-	if err != nil {
-		return nil, err
-	}
-
-	err = encoder.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-func decompress(b []byte) ([]byte, error) {
-	dec, err := zstd.NewReader(bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := dec.DecodeAll(b, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	dec.Close()
-
-	return result, nil
+// Compressor represents compressor interfase
+type Compressor interface {
+	Compress([]byte) ([]byte, error)
+	Decompress([]byte) ([]byte, error)
+	Id() int8
+	Init() error
 }

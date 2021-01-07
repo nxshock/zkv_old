@@ -28,7 +28,7 @@ func TestCustomBlockSize(t *testing.T) {
 
 	db, err := OpenWithConfig(filePath, config)
 	assert.NoError(t, err)
-	assert.Equal(t, *config, db.config)
+	assert.Equal(t, config.BlockDataSize, db.config.BlockDataSize)
 
 	err = db.Close()
 	assert.NoError(t, err)

@@ -238,8 +238,8 @@ func TestShrink(t *testing.T) {
 	const filePath = "shrink1.zkv"
 	const newFilePath = "shrink2.zkv"
 
-	//defer os.Remove(filePath)
-	//defer os.Remove(newFilePath)
+	defer os.Remove(filePath)
+	defer os.Remove(newFilePath)
 
 	db, err := Open(filePath)
 	assert.NoError(t, err)

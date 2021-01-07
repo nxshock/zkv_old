@@ -6,8 +6,8 @@ import (
 	"io"
 )
 
-func writeBlock(w io.Writer, data []byte) error {
-	compressedBlockData, err := compress(data)
+func writeBlock(w io.Writer, compressor Compressor, data []byte) error {
+	compressedBlockData, err := compressor.Compress(data)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func writeBlock(w io.Writer, data []byte) error {
 	return nil
 }
 
-func readBlock(r io.Reader) (decompressedData []byte, err error) {
+func readBlock(r io.Reader, compressor Compressor) (decompressedData []byte, err error) {
 	var blockLength int64
 	err = binary.Read(r, binary.LittleEndian, &blockLength)
 	if err != nil {
@@ -54,7 +54,7 @@ func readBlock(r io.Reader) (decompressedData []byte, err error) {
 		return nil, err
 	}
 
-	dataBytes, err := decompress(b)
+	dataBytes, err := compressor.Decompress(b)
 	if err != nil {
 		return nil, err
 	}

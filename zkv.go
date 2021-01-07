@@ -59,7 +59,7 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 
 	f, err := os.OpenFile(path, fileFlags, 0644)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open storage file: %v", err)
 	}
 
 	db := &Db{
@@ -74,10 +74,16 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 			db.config.BlockDataSize = defaultConfig.BlockDataSize
 		}
 
-		err = writeHeader(db.f, db.config.BlockDataSize)
+		if config != nil && config.Compressor != nil {
+			db.config.Compressor = config.Compressor
+		} else {
+			db.config.Compressor = defaultCompressor
+		}
+
+		err = writeHeader(db.f, db.config.BlockDataSize, db.config.Compressor.Id())
 		if err != nil {
 			db.f.Close()
-			return nil, err
+			return nil, fmt.Errorf("write header: %v", err)
 		}
 
 		return db, nil
@@ -86,24 +92,35 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 	header, err := readHeader(f)
 	if err != nil {
 		f.Close()
-		return nil, err
+		return nil, fmt.Errorf("read header: %v", err)
 	}
 
-	db.config.BlockDataSize = header.blockDataSize
+	compressor, exists := availableCompressors[header.compressorId]
+	if !exists {
+		f.Close()
+		return nil, fmt.Errorf("unknown compressor id = %d", header.compressorId)
+	}
+	db.config.Compressor = compressor
 
 	if config != nil && config.ReadOnly {
 		db.config.ReadOnly = config.ReadOnly
 	}
 
+	db.config.BlockDataSize = header.blockDataSize
 	if config != nil && config.BlockDataSize > 0 && db.config.BlockDataSize != config.BlockDataSize {
 		f.Close()
 		return nil, fmt.Errorf("can't change block size to %d on existing storage with block size %d", config.BlockDataSize, db.config.BlockDataSize)
 	}
 
+	if config != nil && config.Compressor != nil && db.config.Compressor.Id() != config.Compressor.Id() {
+		f.Close()
+		return nil, fmt.Errorf("can't change compressor to %d on existing storage with compressor %d", config.Compressor.Id(), db.config.Compressor.Id())
+	}
+
 	err = db.readAllBlocks()
 	if err != nil {
 		f.Close()
-		return nil, err
+		return nil, fmt.Errorf("read stored records: %v", err)
 	}
 
 	err = db.move()
@@ -127,7 +144,7 @@ func (db *Db) readAllBlocks() error {
 			return err
 		}
 
-		blockData, err := readBlock(db.f)
+		blockData, err := readBlock(db.f, db.config.Compressor)
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -184,7 +201,7 @@ func (db *Db) move() error {
 		return err
 	}
 
-	blockBytes, err := readBlock(db.f)
+	blockBytes, err := readBlock(db.f, db.config.Compressor)
 	if err != nil {
 		return err
 	}
@@ -281,8 +298,7 @@ func (db *Db) flush() error {
 	if err != nil {
 		return err
 	}
-
-	err = writeBlock(db.f, db.buf.Bytes())
+	err = writeBlock(db.f, db.config.Compressor, db.buf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -440,7 +456,7 @@ func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, value
 		return actionNone, nil, nil, err
 	}
 
-	blockBytes, err := readBlock(db.f)
+	blockBytes, err := readBlock(db.f, db.config.Compressor)
 	if err != nil {
 		return actionNone, nil, nil, err
 	}
