@@ -442,13 +442,7 @@ func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, value
 	}
 
 	if coords.blockNum == db.currentBlockNum {
-		r := bytes.NewReader(db.buf.Bytes())
-		_, err := r.Seek(coords.recordOffset, io.SeekStart)
-		if err != nil {
-			return actionNone, nil, nil, err
-		}
-
-		return readRecord(r)
+		return readRecord(bytes.NewReader(db.buf.Bytes()[coords.recordOffset:]))
 	}
 
 	_, err = db.f.Seek(db.blockInfo[coords.blockNum], io.SeekStart)
