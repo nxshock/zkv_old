@@ -21,6 +21,9 @@ jobs:
     - name: Get deps
       run: go get -v ./...
 
+    - name: Get tests deps
+      run: go get -v github.com/stretchr/testify
+
     - name: Build
       run: go build -v ./...
 
