@@ -9,8 +9,8 @@ import (
 
 type header struct {
 	version       int8
-	blockDataSize int64
 	compressorId  int8
+	blockDataSize int64
 }
 
 var headerLength = int64(len(headerBytes) + 1 + 1 + 8)
