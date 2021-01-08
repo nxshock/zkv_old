@@ -340,7 +340,7 @@ func (db *Db) Count() int {
 }
 
 // Delete deletes value of specified key.
-func (db *Db) Delete(key int64) error {
+func (db *Db) Delete(key interface{}) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -351,7 +351,7 @@ func (db *Db) Delete(key int64) error {
 	return db.delete(key)
 }
 
-func (db *Db) delete(key int64) error {
+func (db *Db) delete(key interface{}) error {
 	keyBytes, err := encode(key)
 	if err != nil {
 		return err
