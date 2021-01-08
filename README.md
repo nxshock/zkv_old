@@ -114,6 +114,8 @@ f := func(keyBytes, valueBytes []byte) bool {
 
 	return true // return true to continue iterating else return false
 }
+
+err := db.IterateKeys(f)
 ```
 
 This provides maximum possible read speed.
