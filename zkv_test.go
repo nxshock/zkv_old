@@ -9,6 +9,7 @@ import (
 
 func TestFlush(t *testing.T) {
 	const filePath = "file.tmp"
+	const filePath = "flush.tmp"
 	defer os.Remove(filePath)
 
 	db, err := Open(filePath)
@@ -35,6 +36,7 @@ func TestFlush(t *testing.T) {
 
 func TestEmpty(t *testing.T) {
 	const filePath = "file.tmp"
+	const filePath = "empty.tmp"
 
 	defer os.Remove(filePath)
 
@@ -55,6 +57,7 @@ func TestEmpty(t *testing.T) {
 
 func TestBasic(t *testing.T) {
 	const filePath = "file.tmp"
+	const filePath = "basic.tmp"
 
 	defer os.Remove(filePath)
 
@@ -75,6 +78,7 @@ func TestBasic(t *testing.T) {
 
 func TestReadFile(t *testing.T) {
 	const filePath = "file.tmp"
+	const filePath = "read.tmp"
 	const expectedRecordCount = 1000
 
 	defer os.Remove(filePath)
@@ -130,6 +134,7 @@ func TestReadFile(t *testing.T) {
 
 func TestOneWriteRead(t *testing.T) {
 	const filePath = "file.zkv"
+	const filePath = "one.tmp"
 
 	defer os.Remove(filePath)
 
@@ -179,6 +184,7 @@ func TestOneWriteRead(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	const filePath = "file.zkv"
+	const filePath = "delete.tmp"
 
 	defer os.Remove(filePath)
 
@@ -210,6 +216,7 @@ func TestDelete(t *testing.T) {
 
 func TestKeyReplacing(t *testing.T) {
 	const filePath = "file.zkv"
+	const filePath = "replace.tmp"
 
 	defer os.Remove(filePath)
 
