@@ -296,7 +296,7 @@ func TestIterateKeys(t *testing.T) {
 	}
 
 	var gotKeyOrder []int
-	db.IterateKeys(func(k, v []byte) bool {
+	db.Iterate(func(k, v []byte) bool {
 		var kv int
 		err = Decode(k, &kv)
 		assert.NoError(t, err)

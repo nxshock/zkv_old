@@ -493,7 +493,7 @@ func (db *Db) getBlockBytes(blockNum int64) ([]byte, error) {
 	return b, nil
 }
 
-func (db *Db) IterateKeys(f func(gobKeyBytes, gobValueBytes []byte) (continueIteration bool)) error {
+func (db *Db) Iterate(f func(gobKeyBytes, gobValueBytes []byte) (continueIteration bool)) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
