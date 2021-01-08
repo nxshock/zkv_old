@@ -100,6 +100,24 @@ Often calls reduce compression ratio because written data on disk does not group
 count := db.Count()
 ```
 
+**Iterate over keys and values in written order:**
+
+```go
+f := func(keyBytes, valueBytes []byte) bool {
+	var key KeyType
+	var value ValueType
+
+	err := zkv.Decode(keyBytes, &key)
+	err = zkv.Decode(valueBytes, &value)
+
+	// now you can work with key and value
+
+	return true // return true to continue iterating else return false
+}
+```
+
+This provides maximum possible read speed.
+
 **Shrink storage size by deleting overwrited records from file:**
 
 ```go

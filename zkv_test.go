@@ -268,3 +268,46 @@ func TestShrink(t *testing.T) {
 
 	assert.True(t, file1stat.Size() > file2stat.Size())
 }
+
+func TestIterateKeys(t *testing.T) {
+	const filePath = "iterate.tmp"
+
+	defer os.Remove(filePath)
+
+	db, err := Open(filePath)
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+
+	for i := 1; i < 100; i++ {
+		err = db.Set(i, i)
+		assert.NoError(t, err)
+	}
+	for i := 1; i < 100; i++ {
+		err = db.Delete(i)
+		assert.NoError(t, err)
+	}
+
+	var expectedKeyOrder []int
+	for i := 100; i < 200; i++ {
+		err = db.Set(i, i)
+		assert.NoError(t, err)
+
+		expectedKeyOrder = append(expectedKeyOrder, i)
+	}
+
+	var gotKeyOrder []int
+	db.IterateKeys(func(k, v []byte) bool {
+		var kv int
+		err = Decode(k, &kv)
+		assert.NoError(t, err)
+
+		gotKeyOrder = append(gotKeyOrder, kv)
+
+		return true
+	})
+
+	assert.Equal(t, expectedKeyOrder, gotKeyOrder)
+
+	err = db.Close()
+	assert.NoError(t, err)
+}

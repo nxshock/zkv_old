@@ -239,12 +239,12 @@ func (db *Db) Set(key interface{}, value interface{}) error {
 }
 
 func (db *Db) set(key interface{}, value interface{}) error {
-	keyBytes, err := encode(key)
+	keyBytes, err := Encode(key)
 	if err != nil {
 		return err
 	}
 
-	valueBytes, err := encode(value)
+	valueBytes, err := Encode(value)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func (db *Db) Get(key interface{}, valuePtr interface{}) error {
 }
 
 func (db *Db) get(key interface{}, valuePtr interface{}) error {
-	keyBytes, err := encode(key)
+	keyBytes, err := Encode(key)
 	if err != nil {
 		return err
 	}
@@ -352,7 +352,7 @@ func (db *Db) Delete(key interface{}) error {
 }
 
 func (db *Db) delete(key interface{}) error {
-	keyBytes, err := encode(key)
+	keyBytes, err := Encode(key)
 	if err != nil {
 		return err
 	}
@@ -491,4 +491,47 @@ func (db *Db) getBlockBytes(blockNum int64) ([]byte, error) {
 	db.lastLoadedBlock.blockData = b
 
 	return b, nil
+}
+
+func (db *Db) IterateKeys(f func(gobKeyBytes, gobValueBytes []byte) (continueIteration bool)) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for i := int64(0); i <= db.currentBlockNum; i++ {
+		blockBytes, err := db.getBlockBytes(i)
+		if err != nil {
+			return err
+		}
+
+		blockDataReader := bytes.NewReader(blockBytes)
+		for {
+			recordOffset, err := blockDataReader.Seek(0, io.SeekCurrent)
+			if err != nil {
+				return err
+			}
+
+			action, keyBytes, valueBytes, err := readRecord(blockDataReader)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+
+			if _, exists := db.keys[string(keyBytes)]; !exists {
+				continue
+			}
+
+			if action != actionAdd ||
+				db.keys[string(keyBytes)].blockNum != i ||
+				db.keys[string(keyBytes)].recordOffset != recordOffset {
+				continue
+			}
+
+			if !f(keyBytes, valueBytes) {
+				return nil
+			}
+		}
+	}
+
+	return nil
 }

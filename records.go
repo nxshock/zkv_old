@@ -8,7 +8,8 @@ import (
 	"io"
 )
 
-func encode(key interface{}) ([]byte, error) {
+// Encode transmits the data item to encoded []byte
+func Encode(key interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(key)
 	if err != nil {
@@ -18,7 +19,8 @@ func encode(key interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func decodeKey(encodedKey []byte, keyPtr interface{}) error {
+// Decode reads value from encoded []byte
+func Decode(encodedKey []byte, keyPtr interface{}) error {
 	return gob.NewDecoder(bytes.NewReader(encodedKey)).Decode(keyPtr)
 }
 
@@ -67,7 +69,7 @@ func writeRecord(w io.Writer, action action, keyBytes []byte, valuePtr interface
 		return writeRecord2(w, action, keyBytes, nil)
 	}
 
-	valueBytes, err := encode(valuePtr)
+	valueBytes, err := Encode(valuePtr)
 	if err != nil {
 		return err
 	}
