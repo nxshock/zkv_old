@@ -321,11 +321,9 @@ func (db *Db) Close() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	if db.buf.Len() > 0 {
-		err := db.flush()
-		if err != nil {
-			return err
-		}
+	err := db.flush()
+	if err != nil {
+		return err
 	}
 
 	return db.f.Close()
