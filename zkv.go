@@ -129,7 +129,7 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 		return nil, fmt.Errorf("read stored records: %v", err)
 	}
 
-	err = db.move()
+	err = db.restoreWriteBuffer()
 	if err != nil {
 		f.Close()
 		return nil, err
@@ -192,7 +192,7 @@ func (db *Db) readAllBlocks() error {
 }
 
 // переместить последний блок в буфер
-func (db *Db) move() error {
+func (db *Db) restoreWriteBuffer() error {
 	if len(db.blockInfo) == 0 {
 		return nil
 	}
