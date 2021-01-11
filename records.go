@@ -49,7 +49,10 @@ func writeRecord2(w io.Writer, action action, keyBytes []byte, valueBytes []byte
 			return err
 		}
 
-		buf.Write(valueBytes)
+		_, err = buf.Write(valueBytes)
+		if err != nil {
+			return err
+		}
 	case actionDelete:
 		// no additional fields
 	default:
