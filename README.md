@@ -10,9 +10,9 @@ Data stored in log based structure. Records grouped into blocks to increase comp
 
 Features:
 * High compression ratio;
-* Fast writes.
 
 Disadvantages:
+* Medium speed writes;
 * Slow reads;
 * Deleting or replacing data does not recover free space.
 * Every request blocks whole storage.
