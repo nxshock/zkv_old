@@ -30,9 +30,7 @@ block data size      [8]byte // minimal block size for compression
 
 	[]record
 		action       [1]byte
-		key length   [8]byte
 		key          []byte  // gob-encoded
-		value length [8]byte // only for records with action == actionAdd
 		value        []byte  // gob-encoded, only for records with action == actionAdd
 ```
 
