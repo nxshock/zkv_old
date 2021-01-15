@@ -2,7 +2,6 @@ package zkv
 
 import (
 	"bytes"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -279,7 +278,7 @@ func (db *Db) get(key interface{}, valuePtr interface{}) error {
 		return fmt.Errorf("expected read %v key, got %v", keyBytes, gotKeyBytes)
 	}
 
-	err = gob.NewDecoder(bytes.NewReader(valueBytes)).Decode(valuePtr)
+	err = Decode(valueBytes, valuePtr)
 	if err != nil {
 		return err
 	}
