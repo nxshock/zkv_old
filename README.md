@@ -30,8 +30,8 @@ block data size      [8]byte // minimal block size for compression
 
 	[]record
 		action       [1]byte
-		key          []byte  // gob-encoded
-		value        []byte  // gob-encoded, only for records with action == actionAdd
+		key          []byte  // binary-encoded
+		value        []byte  // binary-encoded, only for records with action == actionAdd
 ```
 
 ## Usage
@@ -126,5 +126,6 @@ err := db.Shrink(newFilePath)
 
 ## Used libraries
 
+* [binary](https://github.com/kelindar/binary) - generic and Fast Binary Serializer for Go;
 * [xz](https://github.com/ulikunitz/xz) - Go language package supports the reading and writing of xz compressed streams;
 * [zstd](https://github.com/klauspost/compress/tree/master/zstd) - provides compression to and decompression of Zstandard content.

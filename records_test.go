@@ -2,7 +2,6 @@ package zkv
 
 import (
 	"bytes"
-	"encoding/gob"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,11 +10,15 @@ import (
 func TestReadWriteRecord(t *testing.T) {
 	var buf bytes.Buffer
 
+	type T struct {
+		Value int64
+	}
+
 	var record = struct {
 		action action
 		key    int64
-		value  int64
-	}{actionAdd, 123, 456}
+		value  T
+	}{actionAdd, 123, T{456}}
 
 	keyBytes, err := Encode(record.key)
 	assert.NoError(t, err)
@@ -26,8 +29,8 @@ func TestReadWriteRecord(t *testing.T) {
 	action, keyBytes, b, err := readRecord(&buf)
 	assert.NoError(t, err)
 
-	var gotValue int64
-	err = gob.NewDecoder(bytes.NewReader(b)).Decode(&gotValue)
+	var gotValue T
+	err = Decode(b, &gotValue)
 	assert.NoError(t, err)
 
 	assert.Equal(t, record.action, action)
@@ -38,15 +41,4 @@ func TestReadWriteRecord(t *testing.T) {
 
 	assert.Equal(t, record.key, key)
 	assert.Equal(t, record.value, gotValue)
-}
-
-func TestKeyOperations(t *testing.T) {
-	key := int64(123)
-	bytes, err := Encode(key)
-	assert.NoError(t, err)
-
-	var gotKey int64
-	err = Decode(bytes, &gotKey)
-	assert.NoError(t, err)
-	assert.Equal(t, key, gotKey)
 }

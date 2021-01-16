@@ -157,8 +157,8 @@ func (db *Db) readAllBlocks() error {
 		}
 
 		db.blockInfo[db.currentBlockNum] = blockStartPos
-
 		blockDataReader := bytes.NewReader(blockData)
+
 		for {
 			recordOffset, err := blockDataReader.Seek(0, io.SeekCurrent)
 			if err != nil {
@@ -190,7 +190,7 @@ func (db *Db) readAllBlocks() error {
 	return nil
 }
 
-// переместить последний блок в буфер
+// restore write buffer
 func (db *Db) restoreWriteBuffer() error {
 	if len(db.blockInfo) == 0 {
 		return nil
@@ -490,6 +490,7 @@ func (db *Db) getBlockBytes(blockNum int64) ([]byte, error) {
 	return b, nil
 }
 
+// Iterate provedes fastest possible method of all record iteration.
 func (db *Db) Iterate(f func(gobKeyBytes, gobValueBytes []byte) (continueIteration bool)) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()

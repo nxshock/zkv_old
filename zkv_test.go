@@ -75,7 +75,7 @@ func TestBasic(t *testing.T) {
 
 func TestReadFile(t *testing.T) {
 	const filePath = "read.tmp"
-	const expectedRecordCount = 1000
+	const expectedRecordCount = 10
 
 	defer os.Remove(filePath)
 
@@ -102,8 +102,10 @@ func TestReadFile(t *testing.T) {
 	}
 
 	blockOnDisk := len(db.blockInfo)
+	blockInMemBytes := db.buf.Bytes()
 	bytesInMem := db.buf.Len()
 	currentBlockNum := db.currentBlockNum
+	storedKeys := len(db.keys)
 
 	err = db.Close()
 	assert.NoError(t, err)
@@ -115,6 +117,8 @@ func TestReadFile(t *testing.T) {
 	assert.EqualValues(t, db.currentBlockNum, currentBlockNum)
 	assert.Len(t, db.blockInfo, blockOnDisk)
 	assert.EqualValues(t, bytesInMem, db.buf.Len())
+	assert.Len(t, db.keys, storedKeys)
+	assert.Equal(t, blockInMemBytes, db.buf.Bytes())
 
 	for i := int64(0); i < expectedRecordCount; i++ {
 		var got int64
