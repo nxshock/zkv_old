@@ -5,6 +5,14 @@ var (
 	defaultCompressor    = XzCompressor
 )
 
+// Compressor represents compressor interface
+type Compressor interface {
+	Compress([]byte) ([]byte, error)
+	Decompress([]byte) ([]byte, error)
+	Id() int8
+	Init() error
+}
+
 func init() {
 	availableCompressors = make(map[int8]Compressor)
 
@@ -18,12 +26,4 @@ func init() {
 			panic(err)
 		}
 	}
-}
-
-// Compressor represents compressor interfase
-type Compressor interface {
-	Compress([]byte) ([]byte, error)
-	Decompress([]byte) ([]byte, error)
-	Id() int8
-	Init() error
 }
