@@ -19,8 +19,8 @@ Disadvantages:
 
 File structure:
 ```
-header               [3]byte
-version              [1]byte
+header               [3]byte // []byte("zkv")
+version              [1]byte // major version
 compressor id        [1]byte
 block data size      [8]byte // minimal block size for compression
 
@@ -29,7 +29,7 @@ block data size      [8]byte // minimal block size for compression
 	data length      [8]byte // decompressed block length
 
 	[]record
-		action       [1]byte
+		action       [1]byte // 1 - add/overwrite record, 2 - remove record
 		key          []byte  // binary-encoded
 		value        []byte  // binary-encoded, only for records with action == actionAdd
 ```
