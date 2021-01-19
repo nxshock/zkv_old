@@ -8,7 +8,7 @@ type Config struct {
 }
 
 var defaultConfig = &Config{
-	BlockDataSize: 256 * 1024,
+	BlockDataSize: 4 * 1024 * 1024,
 	Compressor:    XzCompressor,
 	ReadOnly:      false}
 
