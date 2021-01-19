@@ -56,7 +56,7 @@ func writeRecord(w io.Writer, action action, keyBytes []byte, valuePtr interface
 	return writeRecord2(w, action, keyBytes, valueBytes)
 }
 
-func readRecord(r Reader) (action action, keyBytes []byte, valueBytes []byte, err error) {
+func readRecord(r reader) (action action, keyBytes []byte, valueBytes []byte, err error) {
 	dec := binary.NewDecoder(r)
 
 	err = dec.Decode(&action)

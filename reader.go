@@ -3,7 +3,7 @@ package zkv
 import "io"
 
 // Reader represents necessary methods for record reader
-type Reader interface {
+type reader interface {
 	io.Reader
 	io.ByteReader
 }
