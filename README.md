@@ -54,7 +54,7 @@ config := &zkv.Config{
 	Compressor:    zkv.XzCompressor, // choose from [NoneCompressor, XzCompressor, ZstdCompressor]
 	                                 // or create custom compressor that match zkv.Compressor interface
 
-	ReadOnly:      true}             // set true if storage must be read only
+	ReadOnly:      false}             // set true if storage must be read only
 
 db, err := OpenWithConfig("path_to_file.zkv", config)
 ```
