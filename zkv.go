@@ -82,7 +82,7 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 		if config != nil && config.Compressor != nil {
 			db.config.Compressor = config.Compressor
 		} else {
-			db.config.Compressor = defaultCompressor
+			db.config.Compressor = defaultConfig.Compressor
 		}
 
 		err = writeHeader(db.f, db.config.BlockDataSize, db.config.Compressor.Id())

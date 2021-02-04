@@ -9,7 +9,7 @@ type Config struct {
 
 var defaultConfig = &Config{
 	BlockDataSize: 4 * 1024 * 1024,
-	Compressor:    XzCompressor,
+	Compressor:    ZstdCompressor,
 	ReadOnly:      false}
 
 // Config returens storage config (read only)

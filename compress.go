@@ -2,7 +2,6 @@ package zkv
 
 var (
 	availableCompressors map[int8]Compressor
-	defaultCompressor    = XzCompressor
 )
 
 // Compressor represents compressor interface

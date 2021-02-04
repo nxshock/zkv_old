@@ -51,8 +51,8 @@ defer db.Close() // don't forget to close storage
 config := &zkv.Config{
 	BlockDataSize: 4 * 1024 * 1024,  // set custom block size
 
-	Compressor:    zkv.XzCompressor, // choose from [NoneCompressor, XzCompressor, ZstdCompressor]
-	                                 // or create custom compressor that match zkv.Compressor interface
+	Compressor:    zkv.ZstdCompressor, // choose from [NoneCompressor, XzCompressor, ZstdCompressor]
+	                                   // or create custom compressor that match zkv.Compressor interface
 
 	ReadOnly:      false}             // set true if storage must be read only
 
@@ -61,8 +61,8 @@ db, err := OpenWithConfig("path_to_file.zkv", config)
 
 **List of available compressors:**
 
-1. `zkv.XzCompressor` (default) - high compression ratio, slow speed;
-2. `zkv.ZstdCompressor` - medium compression ratio, fast compression and medium speed decompression;
+1. `zkv.ZstdCompressor` (default) - medium compression ratio, fast compression and medium speed decompression;
+2. `zkv.XzCompressor` - high compression ratio, slow speed;
 3. `zkv.NoneCompressor` - no compression, high speed.
 
 **Write data:**
