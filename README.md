@@ -15,7 +15,7 @@ Disadvantages:
 * Medium speed writes;
 * Slow reads;
 * Deleting or replacing data does not recover free space.
-* Every request blocks whole storage.
+* Every write request blocks whole storage.
 
 File structure:
 ```

@@ -7,6 +7,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestInitFile(t *testing.T) {
+	const filePath = "init.tmp"
+	defer os.Remove(filePath)
+
+	err := initDb(filePath, *defaultConfig)
+	assert.NoError(t, err)
+	assert.FileExists(t, filePath)
+
+	stat, err := os.Stat(filePath)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 13, stat.Size())
+}
+
 func TestFlush(t *testing.T) {
 	const filePath = "flush.tmp"
 	defer os.Remove(filePath)

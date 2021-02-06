@@ -16,93 +16,67 @@ type coords struct {
 
 // Db represents key/value storage.
 type Db struct {
-	f         *os.File
+	filePath  string
 	buf       bytes.Buffer
 	keys      map[string]coords // [key]block number + record offset
 	blockInfo map[int64]int64   // [block number]file offset
-
-	lastLoadedBlock struct {
-		blockNum  int64
-		blockData []byte
-	}
 
 	currentBlockNum int64
 
 	config Config
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 // OpenWithConfig opens storage with specified config options.
 func OpenWithConfig(path string, config *Config) (*Db, error) {
-	var flag int
-
-	if config != nil && config.ReadOnly {
-		flag = os.O_RDONLY
-	} else {
-		flag = os.O_CREATE | os.O_RDWR
-	}
-
-	return open(path, flag, config)
+	return open(path, config)
 }
 
 // Open opens storage with default config options.
 func Open(path string) (*Db, error) {
-	return open(path, os.O_CREATE|os.O_RDWR, nil)
+	return open(path, nil)
 }
 
-func open(path string, fileFlags int, config *Config) (*Db, error) {
+func open(path string, config *Config) (*Db, error) {
 	newDb := false
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		newDb = true
+		config = defaultConfig
 	}
 
-	if newDb && config != nil && config.ReadOnly {
+	if newDb && config.ReadOnly {
 		return nil, errors.New("trying to create new readonly storage")
 	}
 
-	f, err := os.OpenFile(path, fileFlags, 0644)
+	var f *os.File
+	var err error
+
+	if newDb {
+		err = initDb(path, *config)
+		if err != nil {
+			return nil, fmt.Errorf("init file: %v", err)
+		}
+	}
+
+	f, err = os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("open storage file: %v", err)
 	}
+	defer f.Close()
 
 	db := &Db{
-		f:         f,
+		filePath:  path,
 		keys:      make(map[string]coords),
 		blockInfo: make(map[int64]int64)}
-	db.lastLoadedBlock.blockNum = -1
-
-	if newDb {
-		if config != nil && config.BlockDataSize > 0 {
-			db.config.BlockDataSize = config.BlockDataSize
-		} else {
-			db.config.BlockDataSize = defaultConfig.BlockDataSize
-		}
-
-		if config != nil && config.Compressor != nil {
-			db.config.Compressor = config.Compressor
-		} else {
-			db.config.Compressor = defaultConfig.Compressor
-		}
-
-		err = writeHeader(db.f, db.config.BlockDataSize, db.config.Compressor.Id())
-		if err != nil {
-			db.f.Close()
-			return nil, fmt.Errorf("write header: %v", err)
-		}
-
-		return db, nil
-	}
 
 	header, err := readHeader(f)
 	if err != nil {
-		f.Close()
 		return nil, fmt.Errorf("read header: %v", err)
 	}
 
 	compressor, exists := availableCompressors[header.compressorId]
 	if !exists {
-		f.Close()
 		return nil, fmt.Errorf("unknown compressor id = %d", header.compressorId)
 	}
 	db.config.Compressor = compressor
@@ -113,43 +87,63 @@ func open(path string, fileFlags int, config *Config) (*Db, error) {
 
 	db.config.BlockDataSize = header.blockDataSize
 	if config != nil && config.BlockDataSize > 0 && db.config.BlockDataSize != config.BlockDataSize {
-		f.Close()
 		return nil, fmt.Errorf("can't change block size to %d on existing storage with block size %d", config.BlockDataSize, db.config.BlockDataSize)
 	}
 
 	if config != nil && config.Compressor != nil && db.config.Compressor.Id() != config.Compressor.Id() {
-		f.Close()
 		return nil, fmt.Errorf("can't change compressor to %d on existing storage with compressor %d", config.Compressor.Id(), db.config.Compressor.Id())
 	}
 
 	err = db.readAllBlocks()
 	if err != nil {
-		f.Close()
 		return nil, fmt.Errorf("read stored records: %v", err)
 	}
 
 	err = db.restoreWriteBuffer()
 	if err != nil {
-		f.Close()
-		return nil, err
+		return nil, fmt.Errorf("restoreWriteBuffer: %v", err)
 	}
 
 	return db, nil
 }
 
-func (db *Db) readAllBlocks() error {
-	_, err := db.f.Seek(headerLength, io.SeekStart)
+func initDb(filePath string, config Config) error {
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("create file: %v", err)
+	}
+
+	err = writeHeader(f, config.BlockDataSize, config.Compressor.Id())
+	if err != nil {
+		return fmt.Errorf("write file header: %v", err)
+	}
+	err = f.Close()
+	if err != nil {
+		return fmt.Errorf("close file: %v", err)
+	}
+
+	return nil
+}
+
+func (db *Db) readAllBlocks() error {
+	f, err := os.Open(db.filePath)
+	if err != nil {
+		return fmt.Errorf("open file: %v", err)
+	}
+	defer f.Close()
+
+	_, err = f.Seek(headerLength, io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("file seek: %v", err)
 	}
 
 	for {
-		blockStartPos, err := db.f.Seek(0, io.SeekCurrent)
+		blockStartPos, err := f.Seek(0, io.SeekCurrent)
 		if err != nil {
 			return err
 		}
 
-		blockData, err := readBlock(db.f, db.config.Compressor)
+		blockData, err := readBlock(f, db.config.Compressor)
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -201,12 +195,18 @@ func (db *Db) restoreWriteBuffer() error {
 		return fmt.Errorf("last block #%d is not present in db.blockInfo", db.currentBlockNum-1)
 	}
 
-	_, err := db.f.Seek(offset, io.SeekStart)
+	f, err := os.Open(db.filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Seek(offset, io.SeekStart)
 	if err != nil {
 		return err
 	}
 
-	blockBytes, err := readBlock(db.f, db.config.Compressor)
+	blockBytes, err := readBlock(f, db.config.Compressor)
 	if err != nil {
 		return err
 	}
@@ -253,8 +253,8 @@ func (db *Db) set(key interface{}, value interface{}) error {
 
 // Get returns value of specified key.
 func (db *Db) Get(key interface{}, valuePtr interface{}) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	return db.get(key, valuePtr)
 }
@@ -299,11 +299,16 @@ func (db *Db) flush() error {
 		return nil
 	}
 
-	blockOffset, err := db.f.Seek(0, io.SeekEnd)
+	f, err := os.OpenFile(db.filePath, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
-	err = writeBlock(db.f, db.config.Compressor, db.buf.Bytes())
+
+	blockOffset, err := f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return err
+	}
+	err = writeBlock(f, db.config.Compressor, db.buf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -312,7 +317,7 @@ func (db *Db) flush() error {
 	db.blockInfo[db.currentBlockNum] = blockOffset
 	db.currentBlockNum++
 
-	return nil
+	return f.Close()
 }
 
 // Close saves buffered data and closes storage.
@@ -320,18 +325,13 @@ func (db *Db) Close() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	err := db.flush()
-	if err != nil {
-		return err
-	}
-
-	return db.f.Close()
+	return db.flush()
 }
 
 // Count returns number of stored key/value pairs.
 func (db *Db) Count() int {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	return len(db.keys)
 }
@@ -371,8 +371,8 @@ func (db *Db) delete(key interface{}) error {
 // Shrink compacts storage by removing replaced records and saves new file to
 // specified path.
 func (db *Db) Shrink(filePath string) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	fileExists := func(filename string) bool {
 		info, err := os.Stat(filename)
@@ -464,36 +464,38 @@ func (db *Db) getBlockBytes(blockNum int64) ([]byte, error) {
 		return db.buf.Bytes(), nil
 	}
 
-	// load from last decoded block
-	if blockNum == db.lastLoadedBlock.blockNum {
-		return db.lastLoadedBlock.blockData, nil
-	}
-
 	offset, exists := db.blockInfo[blockNum]
 	if !exists {
 		return nil, fmt.Errorf("block #%d does not exits", blockNum)
 	}
 
-	_, err := db.f.Seek(offset, io.SeekStart)
+	b, err := db.getBlockBytesFromFile(offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getBlockBytesFromFile: %v", err)
 	}
-
-	b, err := readBlock(db.f, db.config.Compressor)
-	if err != nil {
-		return nil, err
-	}
-
-	db.lastLoadedBlock.blockNum = blockNum
-	db.lastLoadedBlock.blockData = b
 
 	return b, nil
 }
 
+func (db *Db) getBlockBytesFromFile(offset int64) ([]byte, error) {
+	f, err := os.Open(db.filePath)
+	if err != nil {
+		return nil, fmt.Errorf("open file: %v", err)
+	}
+	defer f.Close()
+
+	_, err = f.Seek(offset, io.SeekStart)
+	if err != nil {
+		return nil, fmt.Errorf("file seek: %v", err)
+	}
+
+	return readBlock(f, db.config.Compressor)
+}
+
 // Iterate provedes fastest possible method of all record iteration.
 func (db *Db) Iterate(f func(gobKeyBytes, gobValueBytes []byte) (continueIteration bool)) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	for i := int64(0); i <= db.currentBlockNum; i++ {
 		blockBytes, err := db.getBlockBytes(i)
