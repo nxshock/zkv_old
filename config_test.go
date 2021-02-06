@@ -8,7 +8,7 @@ import (
 )
 
 func TestBasicConfig(t *testing.T) {
-	const filePath = "file.tmp"
+	const filePath = "basicConfig.tmp"
 	defer os.Remove(filePath)
 
 	db, err := Open(filePath)
@@ -21,7 +21,7 @@ func TestBasicConfig(t *testing.T) {
 }
 
 func TestCustomBlockSize(t *testing.T) {
-	const filePath = "file.tmp"
+	const filePath = "customBlockSize.tmp"
 	defer os.Remove(filePath)
 
 	config := &Config{BlockDataSize: 4 * 1024 * 1024}
