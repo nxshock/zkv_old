@@ -219,7 +219,7 @@ func TestDelete(t *testing.T) {
 	assert.Equal(t, 0, db.Count())
 
 	err = db.Get(1, nil)
-	assert.Equal(t, errNotFound, err)
+	assert.Equal(t, ErrNotFound, err)
 
 	err = db.Close()
 	assert.NoError(t, err)

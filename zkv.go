@@ -441,7 +441,7 @@ func (db *Db) writeRecord(action action, keyBytes []byte, valueBytes []byte) err
 func (db *Db) getRecord(keyBytes []byte) (action action, rKeyBytes []byte, valueBytes []byte, err error) {
 	coords, exists := db.keys[string(keyBytes)]
 	if !exists {
-		return actionNone, nil, nil, errNotFound
+		return actionNone, nil, nil, ErrNotFound
 	}
 
 	blockBytes, err := db.getBlockBytes(coords.blockNum)
