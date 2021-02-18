@@ -12,9 +12,10 @@ Features:
 * High compression ratio;
 
 Disadvantages:
+* Keys stored in memory;
 * Medium speed writes;
 * Slow reads;
-* Deleting or replacing data does not recover free space.
+* Deleting or replacing data does not recover free space;
 * Every write request blocks whole storage.
 
 File structure:
