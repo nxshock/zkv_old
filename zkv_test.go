@@ -328,3 +328,31 @@ func TestIterateKeys(t *testing.T) {
 	err = db.Close()
 	assert.NoError(t, err)
 }
+
+func TestReopenWithConfig(t *testing.T) {
+	const filePath = "reopenWithConfig.tmp"
+
+	defer os.Remove(filePath)
+
+	db, err := OpenWithConfig(filePath, &Config{BlockDataSize: 1})
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+
+	err = db.Set(1, 1)
+	assert.NoError(t, err)
+
+	err = db.Close()
+	assert.NoError(t, err)
+
+	db, err = OpenWithConfig(filePath, &Config{BlockDataSize: 1})
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+
+	var got int
+	err = db.Get(1, &got)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, got)
+
+	err = db.Close()
+	assert.NoError(t, err)
+}

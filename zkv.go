@@ -42,10 +42,9 @@ func open(path string, config *Config) (*Db, error) {
 	newDb := false
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		newDb = true
-		config = defaultConfig
 	}
 
-	if newDb && config.ReadOnly {
+	if newDb && config != nil && config.ReadOnly {
 		return nil, errors.New("trying to create new readonly storage")
 	}
 
@@ -53,7 +52,11 @@ func open(path string, config *Config) (*Db, error) {
 	var err error
 
 	if newDb {
-		err = initDb(path, *config)
+		if config != nil {
+			err = initDb(path, *config)
+		} else {
+			err = initDb(path, *defaultConfig)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("init file: %v", err)
 		}
@@ -113,7 +116,17 @@ func initDb(filePath string, config Config) error {
 		return fmt.Errorf("create file: %v", err)
 	}
 
-	err = writeHeader(f, config.BlockDataSize, config.Compressor.Id())
+	compressor := config.Compressor
+	if compressor == nil {
+		compressor = defaultConfig.Compressor
+	}
+
+	blockDataSize := config.BlockDataSize
+	if blockDataSize <= 0 {
+		blockDataSize = defaultConfig.BlockDataSize
+	}
+
+	err = writeHeader(f, blockDataSize, compressor.Id())
 	if err != nil {
 		return fmt.Errorf("write file header: %v", err)
 	}
