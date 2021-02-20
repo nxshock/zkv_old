@@ -17,7 +17,7 @@ func TestInitFile(t *testing.T) {
 
 	stat, err := os.Stat(filePath)
 	assert.NoError(t, err)
-	assert.EqualValues(t, 13, stat.Size())
+	assert.EqualValues(t, 5, stat.Size())
 }
 
 func TestFlush(t *testing.T) {
@@ -115,7 +115,7 @@ func TestReadFile(t *testing.T) {
 	}
 
 	blockOnDisk := len(db.blockInfo)
-	blockInMemBytes := db.buf.Bytes()
+	blockInMemBytes := append([]byte{}, db.buf.Bytes()...)
 	bytesInMem := db.buf.Len()
 	currentBlockNum := db.currentBlockNum
 	storedKeys := len(db.keys)
@@ -131,7 +131,7 @@ func TestReadFile(t *testing.T) {
 	assert.Len(t, db.blockInfo, blockOnDisk)
 	assert.EqualValues(t, bytesInMem, db.buf.Len())
 	assert.Len(t, db.keys, storedKeys)
-	assert.Equal(t, blockInMemBytes, db.buf.Bytes())
+	assert.Equal(t, blockInMemBytes, append([]byte{}, db.buf.Bytes()...))
 
 	for i := int64(0); i < expectedRecordCount; i++ {
 		var got int64
@@ -265,6 +265,7 @@ func TestShrink(t *testing.T) {
 		err = db.Set(i/10, i)
 		assert.NoError(t, err)
 	}
+	recordCount := db.Count()
 
 	err = db.Close()
 	assert.NoError(t, err)
@@ -284,6 +285,13 @@ func TestShrink(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.True(t, file1stat.Size() > file2stat.Size())
+
+	db2, err := Open(newFilePath)
+	assert.NoError(t, err)
+	assert.Equal(t, recordCount, db2.Count())
+
+	err = db2.Close()
+	assert.NoError(t, err)
 }
 
 func TestIterateKeys(t *testing.T) {
@@ -352,6 +360,37 @@ func TestReopenWithConfig(t *testing.T) {
 	err = db.Get(1, &got)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, got)
+
+	err = db.Close()
+	assert.NoError(t, err)
+}
+
+func TestChangeBlockSize(t *testing.T) {
+	const filePath = "changeBlockSize.tmp"
+	defer os.Remove(filePath)
+
+	for i := 1; i < 64; i++ {
+		db, err := OpenWithConfig(filePath, &Config{BlockDataSize: int64(i)})
+		assert.NoError(t, err)
+		assert.NotNil(t, db)
+
+		err = db.Set(i, i)
+		assert.NoError(t, err)
+
+		err = db.Close()
+		assert.NoError(t, err)
+	}
+
+	db, err := Open(filePath)
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+
+	for i := 1; i < 64; i++ {
+		var got int
+		err = db.Get(i, &got)
+		assert.NoError(t, err)
+		assert.Equal(t, i, got)
+	}
 
 	err = db.Close()
 	assert.NoError(t, err)

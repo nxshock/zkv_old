@@ -23,7 +23,6 @@ File structure:
 header               [3]byte // []byte("zkv")
 version              [1]byte // major version
 compressor id        [1]byte
-block data size      [8]byte // minimal block size for compression
 
 []blocks
 	block length     [8]byte // compressed block length

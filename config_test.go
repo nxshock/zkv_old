@@ -18,6 +18,14 @@ func TestBasicConfig(t *testing.T) {
 
 	err = db.Close()
 	assert.NoError(t, err)
+
+	db, err = Open(filePath)
+	assert.NoError(t, err)
+
+	assert.Equal(t, *defaultConfig, db.Config())
+
+	err = db.Close()
+	assert.NoError(t, err)
 }
 
 func TestCustomBlockSize(t *testing.T) {

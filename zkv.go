@@ -44,7 +44,11 @@ func open(path string, config *Config) (*Db, error) {
 		newDb = true
 	}
 
-	if newDb && config != nil && config.ReadOnly {
+	if config == nil {
+		config = defaultConfig
+	}
+
+	if newDb && config.ReadOnly {
 		return nil, errors.New("trying to create new readonly storage")
 	}
 
@@ -52,11 +56,7 @@ func open(path string, config *Config) (*Db, error) {
 	var err error
 
 	if newDb {
-		if config != nil {
-			err = initDb(path, *config)
-		} else {
-			err = initDb(path, *defaultConfig)
-		}
+		err = initDb(path, *config)
 		if err != nil {
 			return nil, fmt.Errorf("init file: %v", err)
 		}
@@ -84,13 +84,16 @@ func open(path string, config *Config) (*Db, error) {
 	}
 	db.config.Compressor = compressor
 
+	if config.BlockDataSize <= 0 {
+		config.BlockDataSize = defaultConfig.BlockDataSize
+	}
+
 	if config != nil && config.ReadOnly {
 		db.config.ReadOnly = config.ReadOnly
 	}
 
-	db.config.BlockDataSize = header.blockDataSize
-	if config != nil && config.BlockDataSize > 0 && db.config.BlockDataSize != config.BlockDataSize {
-		return nil, fmt.Errorf("can't change block size to %d on existing storage with block size %d", config.BlockDataSize, db.config.BlockDataSize)
+	if config != nil && config.BlockDataSize > 0 {
+		db.config.BlockDataSize = config.BlockDataSize
 	}
 
 	if config != nil && config.Compressor != nil && db.config.Compressor.Id() != config.Compressor.Id() {
@@ -121,12 +124,7 @@ func initDb(filePath string, config Config) error {
 		compressor = defaultConfig.Compressor
 	}
 
-	blockDataSize := config.BlockDataSize
-	if blockDataSize <= 0 {
-		blockDataSize = defaultConfig.BlockDataSize
-	}
-
-	err = writeHeader(f, blockDataSize, compressor.Id())
+	err = writeHeader(f, compressor.Id())
 	if err != nil {
 		return fmt.Errorf("write file header: %v", err)
 	}

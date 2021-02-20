@@ -8,14 +8,13 @@ import (
 )
 
 type header struct {
-	version       int8
-	compressorId  int8
-	blockDataSize int64
+	version      int8
+	compressorId int8
 }
 
-var headerLength = int64(len(headerBytes) + 1 + 1 + 8)
+var headerLength = int64(len(headerBytes) + 1 + 1)
 
-func writeHeader(w io.Writer, blockDataSize int64, compressorId int8) error {
+func writeHeader(w io.Writer, compressorId int8) error {
 	var buf bytes.Buffer
 
 	err := binary.Write(&buf, binary.LittleEndian, headerBytes)
@@ -24,11 +23,6 @@ func writeHeader(w io.Writer, blockDataSize int64, compressorId int8) error {
 	}
 
 	err = binary.Write(&buf, binary.LittleEndian, version)
-	if err != nil {
-		return err
-	}
-
-	err = binary.Write(&buf, binary.LittleEndian, blockDataSize)
 	if err != nil {
 		return err
 	}
@@ -60,11 +54,6 @@ func readHeader(r io.Reader) (*header, error) {
 	header := new(header)
 
 	err = binary.Read(r, binary.LittleEndian, &header.version)
-	if err != nil {
-		return nil, err
-	}
-
-	err = binary.Read(r, binary.LittleEndian, &header.blockDataSize)
 	if err != nil {
 		return nil, err
 	}
