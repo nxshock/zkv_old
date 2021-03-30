@@ -44,11 +44,7 @@ func open(path string, config *Config) (*Db, error) {
 		newDb = true
 	}
 
-	if config == nil {
-		config = defaultConfig
-	}
-
-	if newDb && config.ReadOnly {
+	if newDb && config != nil && config.ReadOnly {
 		return nil, errors.New("trying to create new readonly storage")
 	}
 
@@ -56,7 +52,7 @@ func open(path string, config *Config) (*Db, error) {
 	var err error
 
 	if newDb {
-		err = initDb(path, *config)
+		err = initDb(path, config)
 		if err != nil {
 			return nil, fmt.Errorf("init file: %v", err)
 		}
@@ -84,16 +80,14 @@ func open(path string, config *Config) (*Db, error) {
 	}
 	db.config.Compressor = compressor
 
-	if config.BlockDataSize <= 0 {
-		config.BlockDataSize = defaultConfig.BlockDataSize
+	if config != nil && config.BlockDataSize > 0 {
+		db.config.BlockDataSize = config.BlockDataSize
+	} else {
+		db.config.BlockDataSize = defaultConfig.BlockDataSize
 	}
 
 	if config != nil && config.ReadOnly {
 		db.config.ReadOnly = config.ReadOnly
-	}
-
-	if config != nil && config.BlockDataSize > 0 {
-		db.config.BlockDataSize = config.BlockDataSize
 	}
 
 	if config != nil && config.Compressor != nil && db.config.Compressor.Id() != config.Compressor.Id() {
@@ -113,15 +107,17 @@ func open(path string, config *Config) (*Db, error) {
 	return db, nil
 }
 
-func initDb(filePath string, config Config) error {
+func initDb(filePath string, config *Config) error {
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("create file: %v", err)
 	}
 
-	compressor := config.Compressor
-	if compressor == nil {
+	var compressor Compressor
+	if config == nil || config.Compressor == nil {
 		compressor = defaultConfig.Compressor
+	} else {
+		compressor = config.Compressor
 	}
 
 	err = writeHeader(f, compressor.Id())

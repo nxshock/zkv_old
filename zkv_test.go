@@ -11,7 +11,7 @@ func TestInitFile(t *testing.T) {
 	const filePath = "init.tmp"
 	defer os.Remove(filePath)
 
-	err := initDb(filePath, *defaultConfig)
+	err := initDb(filePath, defaultConfig)
 	assert.NoError(t, err)
 	assert.FileExists(t, filePath)
 
