@@ -49,7 +49,7 @@ defer db.Close() // don't forget to close storage
 
 ```go
 config := &zkv.Config{
-	BlockDataSize: 4 * 1024 * 1024,  // set custom block size
+	BlockDataSize: 64 * 1024,  // set custom block size
 
 	Compressor:    zkv.ZstdCompressor, // choose from [NoneCompressor, XzCompressor, ZstdCompressor]
 	                                   // or create custom compressor that match zkv.Compressor interface
