@@ -395,3 +395,34 @@ func TestChangeBlockSize(t *testing.T) {
 	err = db.Close()
 	assert.NoError(t, err)
 }
+
+func TestOneMillionArray(t *testing.T) {
+	const filePath = "testOneMillionArray.tmp"
+	defer os.Remove(filePath)
+
+	db, err := Open(filePath)
+	assert.NoError(t, err)
+
+	arr := make([]int, 1_000_000)
+	for i := 0; i < 1_000_000; i++ {
+		arr[i] = i
+	}
+
+	err = db.Set(0, arr)
+	assert.NoError(t, err)
+
+	err = db.Close()
+	assert.NoError(t, err)
+
+	db, err = Open(filePath)
+	assert.NoError(t, err)
+
+	var gotArr []int
+	err = db.Get(0, &gotArr)
+	assert.NoError(t, err)
+
+	assert.Equal(t, arr, gotArr)
+
+	err = db.Close()
+	assert.NoError(t, err)
+}
